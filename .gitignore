@@ -1,0 +1,37 @@
+# Composer Dependencies
+/vendor/
+composer.lock
+vendor
+
+# Environment Files
+.env
+.env.local
+.env.*.local
+
+# Logs & Cache
+logs/
+cache/
+phpunit.log
+
+# PHPUnit
+phpunit.xml
+phpunit.xml.dist
+
+# IDE & Editor Files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS-Spezifische Dateien
+.DS_Store
+Thumbs.db
+
+# Dev-Files
+weclapp-apiv1-chat.md
+package.json
+/tests/
+/unittests/
+*.txt
+*.7z
+*.zip
