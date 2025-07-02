@@ -234,4 +234,43 @@ class QueryBuilder
         return (int) ($response['body']['result'] ?? 0);
     }
 
+    /**
+     * Löscht ein Objekt per ID
+     */
+    public function delete(int $id): bool
+    {
+        return $this->client->delete($this->endpoint, $id);
+    }
+
+    /**
+     * Legt ein neues Objekt an
+     */
+    public function create(array $data): array
+    {
+        return $this->client->post($this->endpoint, $data);
+    }
+
+    /**
+     * Aktualisiert ein Objekt – benötigt 'id' im Array
+     */
+    public function update(array $data): array
+    {
+        if (!isset($data['id']))
+        {
+            throw new \InvalidArgumentException("Fehlende ID im Datenarray für Update.");
+        }
+
+        $uri = "{$this->endpoint}/id/{$data['id']}";
+        return $this->client->put($uri, $data);
+    }
+
+    /**
+     * Speichert ein Objekt: update bei ID, sonst create
+     */
+    public function save(array $data): array
+    {
+        return isset($data['id'])
+            ? $this->update($data)
+            : $this->create($data);
+    }
 }

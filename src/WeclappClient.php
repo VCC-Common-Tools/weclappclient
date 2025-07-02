@@ -189,4 +189,50 @@ class WeclappClient
             return '';
         }
     }
+
+        /**
+         * GET-Request an API-Endpunkt
+         */
+        public function get(string $endpoint, array $params = []): array
+        {
+            return $this->request($endpoint, 'GET', $params)['body'] ?? [];
+        }
+
+        /**
+         * POST-Request mit Daten
+         */
+        public function post(string $endpoint, array $data): array
+        {
+            return $this->request($endpoint, 'POST', [], $data)['body'] ?? [];
+        }
+
+        /**
+         * PUT-Request mit Daten
+         */
+        public function put(string $endpoint, array $data): array
+        {
+            return $this->request($endpoint, 'PUT', [], $data)['body'] ?? [];
+        }
+
+        /**
+         * DELETE-Request
+         */
+        public function delete(string $endpoint, int|string $id): bool
+        {
+            $uri = rtrim($endpoint, '/') . '/id/' . $id;
+
+            try
+            {
+                $response = $this->request($uri, 'DELETE');
+
+                // Erfolg nur bei 204 No Content
+                return ($response['meta']['status_code'] ?? 0) === 204;
+            }
+            catch (\WeclappClient\Exception\WeclappApiException $e)
+            {
+                return false;
+            }
+        }
+
+
 }
