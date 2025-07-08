@@ -289,7 +289,7 @@ class QueryBuilder
 
     /**
      * Setzt eine manuelle Reihenfolge mit beliebigen Feldern.
-     * Beispiel: orderBy(['lastModifiedDate', '-salesChannel'])
+     * Beispiel: orderBy('lastModifiedDate', 'desc'])
      *
      * @param string $field
      * optional @param string $name
