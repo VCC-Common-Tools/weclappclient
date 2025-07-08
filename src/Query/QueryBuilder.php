@@ -31,15 +31,16 @@ class QueryBuilder
      */
     private array $options = [];
 
-    /**
-     * Sortierfelder
-     */
-    private array $sortFields = [];
 
     /**
      * Aktiviert Mehrseitenabfrage für all()
      */
     private bool $forceAll = false;
+
+    /**
+     * Sortierreihenfolge
+     */
+    private array $orderFields = [];
 
     /**
      * Konstruktor
@@ -117,17 +118,6 @@ class QueryBuilder
     }
 
     /**
-     * Sortierung hinzufügen
-     */
-    public function sort(string $field, string $direction = 'asc'): self
-    {
-        $prefix = strtolower($direction) === 'desc' ? '-' : '';
-        $this->sortFields[] = "{$prefix}{$field}";
-
-        return $this;
-    }
-
-    /**
      * Aktiviert automatische Pagination bei all()
      */
     public function nolimit(): self
@@ -144,9 +134,8 @@ class QueryBuilder
     {
         $params = array_merge($this->filters, $this->options);
 
-        if (!empty($this->sortFields))
-        {
-            $params['sort'] = implode(',', $this->sortFields);
+        if (!empty($this->orderFields)) {
+            $params['sort'] = implode(',', $this->orderFields);
         }
 
         return $params;
@@ -273,4 +262,42 @@ class QueryBuilder
             ? $this->update($data)
             : $this->create($data);
     }
+
+    /**
+     * Fügt ein Feld zur Sortierung aufsteigend hinzu.
+     *
+     * @param string $field
+     * @return static
+     */
+    public function orderAsc(string $field): static
+    {
+        $this->orderFields[] = $field;
+        return $this;
+    }
+
+    /**
+     * Fügt ein Feld zur Sortierung absteigend hinzu.
+     *
+     * @param string $field
+     * @return static
+     */
+    public function orderDesc(string $field): static
+    {
+        $this->orderFields[] = '-' . $field;
+        return $this;
+    }
+
+    /**
+     * Setzt eine manuelle Reihenfolge mit beliebigen Feldern.
+     * Beispiel: orderBy(['lastModifiedDate', '-salesChannel'])
+     *
+     * @param array $fields
+     * @return static
+     */
+    public function orderBy(array $fields): static
+    {
+        $this->orderFields = $fields;
+        return $this;
+    }
+
 }
