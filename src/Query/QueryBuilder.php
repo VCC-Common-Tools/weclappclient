@@ -291,13 +291,20 @@ class QueryBuilder
      * Setzt eine manuelle Reihenfolge mit beliebigen Feldern.
      * Beispiel: orderBy(['lastModifiedDate', '-salesChannel'])
      *
-     * @param array $fields
+     * @param string $field
+     * optional @param string $name
      * @return static
      */
-    public function orderBy(array $fields): static
+    public function orderBy(string $field, $direction = 'asc'): static
     {
-        $this->orderFields = $fields;
-        return $this;
+        if (strtolower($direction) === 'desc') 
+        {
+            return $this->orderDesc ($field);
+        } 
+        else 
+        {
+            return $this->orderAsc($field);
+        }
     }
 
 }
