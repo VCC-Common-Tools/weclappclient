@@ -1,10 +1,12 @@
 <?php
 
-namespace WeclappClient;
+namespace WeclappClient\Core;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\RequestException;
+use WeclappClient\Exception\WeclappApiException;
+use WeclappClient\Exception\WeclappErrorCode;
 
 /**
  * Der zentrale WeclappClient zur Kommunikation mit der REST-API.
@@ -66,7 +68,6 @@ class WeclappClient
         $url = "{$this->apiBaseUrl}{$endpoint}";
         $this->lastUrl = "$method $url";
 
-        // HTTP-Optionen vorbereiten
         $options = [
             'headers' => [
                 'AuthenticationToken' => $this->accessToken,
@@ -76,17 +77,14 @@ class WeclappClient
             'query' => $queryParams
         ];
 
-        if (!empty($bodyParams))
-        {
+        if (!empty($bodyParams)) {
             $options['json'] = $bodyParams;
         }
 
-        try
+        try 
         {
-            // Anfrage senden
             $response = $this->client->request($method, $url, $options);
 
-            // Antwort verarbeiten
             $body = json_decode($response->getBody()->getContents(), true) ?? [];
 
             $meta = [
@@ -95,33 +93,12 @@ class WeclappClient
             ];
 
             return $this->lastResponse = ['body' => $body, 'meta' => $meta];
-        }
-        catch (RequestException $e)
+        } 
+        catch (RequestException $e) 
         {
-            $apiResponse = $e->getResponse();
-            $statusCode = $apiResponse?->getStatusCode() ?? 500;
-            $url = $e->getRequest()->getUri()->__toString();
-
-            $body = $apiResponse
-                ? json_decode($apiResponse->getBody()->getContents(), true)
-                : [];
-
-            $message = $body['message'] ?? $body['detail'] ?? $e->getMessage();
-
-            $error = [
-                'error' => true,
-                'status_code' => $statusCode,
-                'url' => $url,
-                'message' => $message
-            ] + $body;
-
-            throw new \WeclappClient\Exception\WeclappApiException(
-                "Weclapp API Error [{$statusCode}]: {$message}",
-                $statusCode,
-                $error
-            );
+            // Schlägt fehlende Verbindung, 4xx/5xx, ungültige Token etc. ab
+            throw WeclappApiException::fromRequestException($e);
         }
-
     }
 
     /**
@@ -130,10 +107,10 @@ class WeclappClient
      * @param string $endpoint z. B. /article, /salesOrder
      * @return Query\QueryBuilder
      */
-    public function query(string $endpoint): Query\QueryBuilder
+    public function query(string $endpoint): QueryBuilder
     {
         $endpoint = trim($endpoint, '/');
-        return new Query\QueryBuilder($this, $endpoint);
+        return new QueryBuilder($this, $endpoint);
     }
 
     /**
@@ -157,12 +134,30 @@ class WeclappClient
     }
 
     /**
+     * Gibt die letzte Fehlermeldung der API-Antwort zurück, falls vorhanden.
+     */
+    public function getLastErrorMessage(): ?string
+    {
+        $body = $this->lastResponse['body'] ?? [];
+        $status = $this->lastResponse['meta']['status_code'] ?? null;
+
+        $msg = $body['message'] ?? $body['detail'] ?? null;
+
+        return $msg && $status
+            ? "[HTTP $status] $msg"
+            : $msg;
+    }
+
+
+    /**
      * Spezielle Methode zum Abruf binärer Daten (z. B. Dateien, Bilder)
      *
      * @param string $endpoint z. B. /customerImage
      * @param array $queryParams Optional: Query-Parameter
      * @param bool $asBase64 Optional: Base64-kodierte Rückgabe
      * @return string Binärdaten oder Base64-String
+     *
+     * @throws WeclappApiException bei Kommunikationsfehlern
      */
     public function binaryRequest(string $endpoint, array $queryParams = [], bool $asBase64 = false): string
     {
@@ -176,17 +171,16 @@ class WeclappClient
             'query' => $queryParams
         ];
 
-        try
+        try 
         {
             $response = $this->client->request('GET', $url, $options);
             $binaryData = $response->getBody()->getContents();
 
             return $asBase64 ? base64_encode($binaryData) : $binaryData;
-        }
-        catch (RequestException $e)
+        } catch (RequestException $e) 
         {
-            // Fehler beim Abruf ignorieren, Rückgabe ist leer
-            return '';
+            // Zentrale Fehlerauswertung via Exception-Fabrik
+            throw WeclappApiException::fromRequestException($e);
         }
     }
 
@@ -228,10 +222,16 @@ class WeclappClient
                 // Erfolg nur bei 204 No Content
                 return ($response['meta']['status_code'] ?? 0) === 204;
             }
-            catch (\WeclappClient\Exception\WeclappApiException $e)
+            catch (WeclappApiException $e)
             {
-                return false;
+                if ($e->getErrorCode() === WeclappErrorCode::NotFound)
+                {
+                    return false;
+                }
+
+                throw $e; // alle anderen weiterreichen
             }
+
         }
 
 
