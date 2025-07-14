@@ -1,27 +1,44 @@
 {
     "name": "voipcompetencecenter/weclappclient",
-    "description": "Ein PHP-Client für die Weclapp API",
+    "description": "Ein PHP-Client für die Weclapp REST-API v1",
+    "authors": [
+        {
+            "name": "Frank Alegria",
+            "email": "dev@voip-competence.center",
+            "role": "Developer"
+        },
+        {
+            "name": "VoIP Competence Center GmbH",
+            "role": "Sponsor"
+        }
+    ],
     "type": "library",
     "license": "MIT",
+    "keywords": [
+        "weclapp",
+        "rest-api",
+        "php",
+        "client"
+    ],
+    "homepage": "https://github.com/VCC-Common-Tools/weclappclient",
     "autoload": {
         "psr-4": {
             "WeclappClient\\": "src/"
         }
     },
-    "autoload-dev": {
-        "psr-4": {
-            "Tests\\": "unittests/"
-        }
-    },
-    "minimum-stability": "dev",
+
+    "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
-        "php": "^8.1",
+        "php": "^8.3",
         "guzzlehttp/guzzle": "^7.9"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.6",
-        "vlucas/phpdotenv": "^5.5",
-        "monolog/monolog": "^3.8"    
+        "vlucas/phpdotenv": "^5.5"
+    },
+    "support": {
+        "issues": "https://github.com/VCC-Common-Tools/weclappclient/issues",
+        "source": "https://github.com/VCC-Common-Tools/weclappclient"
     }
 }
