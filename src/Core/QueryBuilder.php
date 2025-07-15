@@ -73,7 +73,7 @@ class QueryBuilder extends AbstractBaseQueryBuilder
         $all = [];
         $page = 1;
         $pageSize = $this->options['pageSize'] ?? 100;
-        $maxTotal = $this->options['maxTotal'] ?? null;
+        $maxTotal = $this->maxTotal;
 
         do
         {

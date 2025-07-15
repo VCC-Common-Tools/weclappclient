@@ -22,6 +22,8 @@ abstract class AbstractBaseQueryBuilder
      */
     protected bool $forceAll = true;
 
+    protected int $maxTotal = 100;
+
     protected array $orderFields = [];
 
     public function __construct(WeclappClient $client, string $endpoint)
@@ -67,7 +69,7 @@ abstract class AbstractBaseQueryBuilder
      */
     public function limit(int $limit): static
     {
-        $this->options['maxTotal'] = max(1, $limit);
+        $this->maxTotal = max(1, $limit);
         return $this;
     }
 
