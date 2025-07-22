@@ -51,6 +51,11 @@ abstract class AbstractBaseQueryBuilder
     public function whereNotLike(string $field, mixed $value): static { return $this->where($field, 'notlike', $value); }
     public function whereNotILike(string $field, mixed $value): static { return $this->where($field, 'notilike', $value); }
 
+    public function whereCustomField(int $customFieldId, string $operator, mixed $value): static
+    {
+        return $this->where("customField{$customFieldId}", $operator, $value);
+    }
+    
     public function whereIn(string $field, array $values): static
     {
         $this->filters["{$field}-in"] = json_encode($values);
