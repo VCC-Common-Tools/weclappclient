@@ -22,7 +22,7 @@ abstract class AbstractBaseQueryBuilder
      */
     protected bool $forceAll = true;
 
-    protected int $maxTotal = 100;
+    protected ?int $maxTotal = null;
 
     protected array $orderFields = [];
 
@@ -89,6 +89,8 @@ abstract class AbstractBaseQueryBuilder
      */
     public function nolimit(): static
     {
+        $this->forceAll = true;
+        $this->maxTotal = null; // Setzt maxTotal zurück, um alle Ergebnisse
         return $this;
     }
 
@@ -111,7 +113,7 @@ abstract class AbstractBaseQueryBuilder
             : $this->orderAsc($field);
     }
 
-    protected function buildQueryParams(): array
+    public function buildQueryParams(): array
     {
         $params = array_merge($this->filters, $this->options);
 

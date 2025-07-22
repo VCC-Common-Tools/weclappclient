@@ -12,5 +12,6 @@ Thumbs.db
 # Test-Skripte & Debug-Dateien (nicht versionieren)
 tests/debug/
 tests/test*
+tests/*.json
 tests/bootstrap.php
 !tests/.env.example
