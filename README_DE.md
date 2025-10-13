@@ -8,7 +8,7 @@ Die Antwortdaten werden als native PHP-Arrays zurückgegeben – ideal für einf
 
 ```bash
 composer require voipcompetencecenter/weclappclient
-````
+```
 
 ## 🔧 Einrichtung
 
@@ -41,7 +41,7 @@ $results = $client->query('/customer')
 | `whereLike`, `whereILike`       | (i)LIKE-Suchmuster                  |
 | `whereNotLike`, `whereNotILike` | Negierte LIKE-Suchmuster            |
 | `whereIn('feld', [...])`        | Feldwert in Liste enthalten         |
-| `whereIsNull('feld')`           | Feld ist leer/ungesetzt (`IS NULL`) |
+| `whereNull('feld')`             | Feld ist leer/ungesetzt (`IS NULL`) |
 
 ### Sortierung
 
@@ -62,6 +62,18 @@ $results = $client->query('/customer')
 
 ```php
 $count = $client->query('/customer')->whereEq('customerType', 'CUSTOMER')->count();
+```
+
+## 🎯 Einzelne Datensätze abrufen
+
+```php
+// Ersten passenden Datensatz holen
+$customer = $client->query('/customer')
+    ->whereEq('customerType', 'CUSTOMER')
+    ->first();
+
+// Spezifischen Datensatz per ID laden
+$customer = $client->query('/customer')->get($id);
 ```
 
 ## 🛠️ CRUD-Operationen
@@ -101,6 +113,25 @@ Beispiel:
 ]
 ```
 
+## 🧪 Tests
+
+Das Paket enthält Test-Skripte im `tests/` Verzeichnis:
+
+```bash
+# Query-Parameter testen (ohne API-Aufrufe)
+php tests/test_query_params.php
+
+# first() Methode testen (mit API-Aufrufen)
+php tests/test_first_method.php
+```
+
+Erstellen Sie eine `.env` Datei im `tests/` Verzeichnis mit Ihren Weclapp-Zugangsdaten:
+
+```env
+WCLP_TEST_SUBDOMAIN=ihr-subdomain
+WCLP_TEST_API_KEY=ihr-api-key
+```
+
 ---
 
 ## 🧩 Für Entwickler: Wiederverwendung des QueryBuilders
@@ -122,8 +153,14 @@ class MyApiQueryBuilder extends AbstractBaseQueryBuilder
 
 ## 🧱 Hinweis zu Ressourcenklassen
 
-Für umfangreichere Projekte mit Modellklassen (z. B. `Customer`, `Article`) und objektorientiertem Zugriff
+Für umfangreichere Projekte mit Modellklassen (z. B. `Customer`, `Article`) und objektorientiertem Zugriff
 kann dieses Projekt durch ein erweitertes Paket mit **ResourceClient** und **ResourceQueryBuilder** ergänzt werden.
 Der Basis-Client funktioniert aber bewusst ohne diese Erweiterung – einfach, schnell, direkt.
 
+## 📋 Changelog
 
+Siehe [CHANGELOG.md](CHANGELOG.md) für detaillierte Versionshistorie.
+
+## 📄 Lizenz
+
+MIT Lizenz - siehe [LICENSE](LICENSE) Datei für Details.

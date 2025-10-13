@@ -62,7 +62,7 @@ abstract class AbstractBaseQueryBuilder
         return $this;
     }
 
-    public function whereIsNull(string $field): static
+    public function whereNull(string $field): static
     {
         $this->filters["{$field}-null"] = 'true';
         return $this;
@@ -125,6 +125,9 @@ abstract class AbstractBaseQueryBuilder
         if (!empty($this->orderFields)) {
             $params['sort'] = implode(',', $this->orderFields);
         }
+
+        // maxTotal wird NICHT als Query-Parameter gesendet, da es nur intern für Limitierung verwendet wird
+        // Die API erwartet keine maxTotal-Parameter
 
         return $params;
     }

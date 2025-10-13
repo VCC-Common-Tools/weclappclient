@@ -54,7 +54,9 @@ class QueryBuilder extends AbstractBaseQueryBuilder
      */
     public function first(): ?array
     {
-        $result = $this->limit(1)->getResult();
+        // Nutze pageSize statt maxTotal für einzelne API-Anfragen
+        $this->page(1, 1);
+        $result = $this->getResult();
 
         return $result[0] ?? null;
     }

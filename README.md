@@ -8,7 +8,7 @@ Responses are returned as native PHP arrays – ideal for lightweight integratio
 
 ```bash
 composer require voipcompetencecenter/weclappclient
-````
+```
 
 ## 🔧 Setup
 
@@ -41,7 +41,7 @@ $results = $client->query('/customer')
 | `whereLike`, `whereILike`       | (i)LIKE search pattern              |
 | `whereNotLike`, `whereNotILike` | NOT LIKE pattern                    |
 | `whereIn('field', [...])`       | Field value in given list           |
-| `whereIsNull('field')`          | Field is null / not set (`IS NULL`) |
+| `whereNull('field')`            | Field is null / not set (`IS NULL`) |
 
 ### Sorting
 
@@ -62,6 +62,18 @@ $results = $client->query('/customer')
 
 ```php
 $count = $client->query('/customer')->whereEq('customerType', 'CUSTOMER')->count();
+```
+
+## 🎯 Getting Single Records
+
+```php
+// Get first matching record
+$customer = $client->query('/customer')
+    ->whereEq('customerType', 'CUSTOMER')
+    ->first();
+
+// Get specific record by ID
+$customer = $client->query('/customer')->get($id);
 ```
 
 ## 🛠️ CRUD Operations
@@ -101,6 +113,25 @@ Example:
 ]
 ```
 
+## 🧪 Testing
+
+The package includes test scripts in the `tests/` directory:
+
+```bash
+# Test query parameters (no API calls)
+php tests/test_query_params.php
+
+# Test first() method (with API calls)
+php tests/test_first_method.php
+```
+
+Create a `.env` file in the `tests/` directory with your Weclapp credentials:
+
+```env
+WCLP_TEST_SUBDOMAIN=your-subdomain
+WCLP_TEST_API_KEY=your-api-key
+```
+
 ---
 
 ## 🧩 For Developers: Reusing the QueryBuilder
@@ -119,3 +150,11 @@ class MyApiQueryBuilder extends AbstractBaseQueryBuilder
     }
 }
 ```
+
+## 📋 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.

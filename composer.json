@@ -1,6 +1,7 @@
 {
     "name": "voipcompetencecenter/weclappclient",
     "description": "Ein PHP-Client für die Weclapp REST-API v1",
+    "version": "1.0.1",
     "authors": [
         {
             "name": "Frank Alegria",
