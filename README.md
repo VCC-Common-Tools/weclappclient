@@ -274,24 +274,12 @@ $client->query('/party')->dryRun()->create($data);
 
 ## 🧪 Testing
 
-The package includes test scripts in the `tests/` directory:
-
 ```bash
-# Test query parameters (no API calls)
-php tests/test_query_params.php
+# Run all tests
+vendor/bin/phpunit
 
-# Test first() method (with API calls)
-php tests/test_first_method.php
-
-# Test v2.0.0 features (demonstration)
-php tests/test_v2_features.php
-```
-
-Create a `.env` file in the `tests/` directory with your Weclapp credentials:
-
-```env
-WCLP_TEST_SUBDOMAIN=your-subdomain
-WCLP_TEST_API_KEY=your-api-key
+# Run specific test
+vendor/bin/phpunit tests/unit/CustomerTest.php
 ```
 
 ---
