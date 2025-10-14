@@ -1,8 +1,17 @@
-# WeclappClient
+# WeclappClient v2.0.0
 
-A lightweight and flexible PHP client for interacting with the Weclapp REST API (v1).  
-It supports structured queries, pagination, sorting, and basic CRUD operations.  
-Responses are returned as native PHP arrays – ideal for lightweight integrations or custom modeling.
+A comprehensive and flexible PHP client for interacting with the Weclapp REST API v2.  
+It supports structured queries, pagination, sorting, CRUD operations, and all advanced API features.  
+Responses are returned as native PHP arrays with full RFC 7807 error handling.
+
+## 🚀 What's New in v2.0.0
+
+- **API v2 Migration**: Full support for weclapp API v2 with legacy v1 compatibility
+- **Advanced Filtering**: OR conditions, grouping, raw filter expressions (Beta)
+- **Performance Optimization**: Referenced entities, selective properties, additional properties
+- **Enhanced Updates**: Partial updates, dry-run mode, null serialization
+- **Complete Error Handling**: RFC 7807 compliant with 40+ error types
+- **Backward Compatible**: Minimal breaking changes, easy migration from v1.x
 
 ## 📦 Installation
 
@@ -15,7 +24,11 @@ composer require voipcompetencecenter/weclappclient
 ```php
 use WeclappClient\Core\WeclappClient;
 
+// Default: API v2
 $client = new WeclappClient('your-subdomain', 'your-api-key');
+
+// Legacy: API v1 (if needed)
+$client = new WeclappClient('your-subdomain', 'your-api-key', null, 1);
 ```
 
 ## 🔍 Querying with the QueryBuilder
@@ -41,7 +54,37 @@ $results = $client->query('/customer')
 | `whereLike`, `whereILike`       | (i)LIKE search pattern              |
 | `whereNotLike`, `whereNotILike` | NOT LIKE pattern                    |
 | `whereIn('field', [...])`       | Field value in given list           |
-| `whereNull('field')`            | Field is null / not set (`IS NULL`) |
+| `whereNotIn('field', [...])`    | Field value NOT in given list       |
+| `whereNull('field')`            | Field is null                       |
+| `whereNotNull('field')`         | Field is not null                   |
+
+### Advanced Filtering (v2.0.0)
+
+```php
+// OR Conditions
+$results = $client->query('/party')
+    ->whereEq('firstName', 'Max')
+    ->orWhere('lastName', 'eq', 'Mustermann')
+    ->orWhere('email', 'like', '%@example.com')
+    ->getResult();
+
+// OR Grouping
+$results = $client->query('/party')
+    ->orWhereGroup('location', function($q) {
+        $q->orWhere('city', 'eq', 'Berlin')
+          ->orWhere('city', 'eq', 'München');
+    })
+    ->orWhereGroup('status', function($q) {
+        $q->orWhere('active', 'eq', true)
+          ->orWhere('verified', 'eq', true);
+    })
+    ->getResult();
+
+// Raw Filter Expressions (Beta)
+$results = $client->query('/party')
+    ->whereRaw('(age >= 18) and (customer = true)')
+    ->getResult();
+```
 
 ### Sorting
 
@@ -76,6 +119,33 @@ $customer = $client->query('/customer')
 $customer = $client->query('/customer')->get($id);
 ```
 
+## ⚡ Performance Optimization (v2.0.0)
+
+```php
+// Selective Properties - Only fetch needed fields
+$results = $client->query('/article')
+    ->properties(['id', 'name', 'unitId', 'articleCategoryId'])
+    ->getResult();
+
+// Referenced Entities - Load related data in one request
+$results = $client->query('/article')
+    ->includeReferencedEntities(['unitId', 'articleCategoryId'])
+    ->getResult();
+
+// Additional Properties - Computed fields
+$results = $client->query('/article')
+    ->additionalProperties('currentSalesPrice')
+    ->getResult();
+
+// Combined optimization
+$results = $client->query('/article')
+    ->properties(['id', 'name', 'unitId'])
+    ->includeReferencedEntities(['unitId'])
+    ->additionalProperties('currentSalesPrice')
+    ->serializeNulls() // Include null values explicitly
+    ->getResult();
+```
+
 ## 🛠️ CRUD Operations
 
 ```php
@@ -89,15 +159,62 @@ $created = $client->query('/customer')->create([
     'partyType' => 'ORGANIZATION'
 ]);
 
-// Update
+// Update (Traditional)
 $updated = $client->query('/customer')->update([
     'id' => $created['id'],
     'company' => 'Updated GmbH'
 ]);
 
+// Partial Update (v2.0.0) - Only update specified fields
+$updated = $client->query('/customer')->partialUpdate([
+    'id' => $created['id'],
+    'version' => $created['version'],
+    'email' => 'new.email@example.com'
+]);
+
+// Dry-Run Mode (v2.0.0) - Validate without executing
+$validation = $client->query('/customer')
+    ->dryRun()
+    ->create([
+        'company' => 'Test Corp',
+        'customerType' => 'CUSTOMER'
+    ]);
+
 // Delete
 $success = $client->query('/customer')->delete($created['id']);
 ```
+
+## 🛡️ Error Handling (v2.0.0)
+
+The client now provides comprehensive RFC 7807 compliant error handling:
+
+```php
+use WeclappClient\Exception\WeclappApiException;
+use WeclappClient\Exception\WeclappValidationError;
+
+try {
+    $result = $client->query('/party')->create($data);
+} catch (WeclappApiException $e) {
+    // RFC 7807 compliant error information
+    echo "Error Type: " . $e->getType();           // URI reference to error type
+    echo "Title: " . $e->getTitle();               // Short summary
+    echo "Detail: " . $e->getDetail();             // Detailed explanation
+    echo "Instance: " . $e->getInstance();         // URI to affected entity
+    
+    // Validation errors (if any)
+    foreach ($e->getValidationErrors() as $error) {
+        echo "Field: " . $error->location;         // JsonPath to field
+        echo "Message: " . $error->detail;         // Field-specific error
+        echo "Allowed: " . implode(', ', $error->allowed ?? []); // Valid values
+    }
+}
+```
+
+### Error Types
+
+The client supports 40+ error types including:
+- **Main Errors**: `context`, `forbidden`, `optimistic_lock`, `validation`, etc.
+- **Validation Errors**: `email`, `pattern`, `size`, `reference`, `enum`, etc.
 
 ## 📄 Response Format
 
@@ -113,6 +230,48 @@ Example:
 ]
 ```
 
+## 🔄 Migration from v1.x
+
+### Breaking Changes (Minimal)
+
+1. **Default API Version**: Now uses v2 by default (v1 still available)
+2. **Update Method**: New signature `update(array $data, bool $ignoreMissingProperties = false)`
+
+### Migration Steps
+
+```php
+// v1.x (old)
+$client = new WeclappClient('tenant', 'token');
+
+// v2.0.0 (automatic migration)
+$client = new WeclappClient('tenant', 'token'); // Uses v2 by default
+
+// Legacy v1 (if needed)
+$client = new WeclappClient('tenant', 'token', null, 1);
+```
+
+### New Features Available
+
+All new features are **optional** and **backward compatible**:
+
+```php
+// Use new advanced filtering
+$results = $client->query('/party')
+    ->whereNotNull('email')
+    ->orWhere('firstName', 'eq', 'Max')
+    ->getResult();
+
+// Use performance optimizations
+$results = $client->query('/article')
+    ->properties(['id', 'name'])
+    ->includeReferencedEntities(['unitId'])
+    ->getResult();
+
+// Use enhanced updates
+$client->query('/party')->partialUpdate($data);
+$client->query('/party')->dryRun()->create($data);
+```
+
 ## 🧪 Testing
 
 The package includes test scripts in the `tests/` directory:
@@ -123,6 +282,9 @@ php tests/test_query_params.php
 
 # Test first() method (with API calls)
 php tests/test_first_method.php
+
+# Test v2.0.0 features (demonstration)
+php tests/test_v2_features.php
 ```
 
 Create a `.env` file in the `tests/` directory with your Weclapp credentials:
