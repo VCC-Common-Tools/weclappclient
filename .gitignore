@@ -1,6 +1,7 @@
 # Composer-Abhängigkeiten
 /vendor/
 composer.lock
+/apidoc
 
 # Systemdateien (macOS, Windows)
 .DS_Store

@@ -125,7 +125,30 @@ class QueryBuilder extends AbstractBaseQueryBuilder
      */
     public function delete(int $id): bool
     {
-        return $this->client->delete($this->endpoint, $id);
+        $uri = rtrim($this->endpoint, '/') . '/id/' . $id;
+
+        $queryParams = [];
+        if ($this->isDryRun()) {
+            $queryParams['dryRun'] = 'true';
+        }
+
+        try
+        {
+            $response = $this->client->request($uri, 'DELETE', $queryParams);
+
+            // Erfolg nur bei 204 No Content (oder 200 bei Dry-Run)
+            $statusCode = $response['meta']['status_code'] ?? 0;
+            return $statusCode === 204 || ($this->isDryRun() && $statusCode === 200);
+        }
+        catch (\WeclappClient\Exception\WeclappApiException $e)
+        {
+            if ($e->getErrorCode() === \WeclappClient\Exception\WeclappErrorCode::NotFound)
+            {
+                return false;
+            }
+
+            throw $e; // alle anderen weiterreichen
+        }
     }
 
     /**
@@ -133,13 +156,18 @@ class QueryBuilder extends AbstractBaseQueryBuilder
      */
     public function create(array $data): array
     {
-        return $this->client->post($this->endpoint, $data);
+        $queryParams = [];
+        if ($this->isDryRun()) {
+            $queryParams['dryRun'] = 'true';
+        }
+
+        return $this->client->request($this->endpoint, 'POST', $queryParams, $data)['body'] ?? [];
     }
 
     /**
      * Aktualisiert ein Objekt – benötigt 'id' im Array
      */
-    public function update(array $data): array
+    public function update(array $data, bool $ignoreMissingProperties = false): array
     {
         if (!isset($data['id']))
         {
@@ -147,7 +175,24 @@ class QueryBuilder extends AbstractBaseQueryBuilder
         }
 
         $uri = "{$this->endpoint}/id/{$data['id']}";
-        return $this->client->put($uri, $data);
+        
+        $queryParams = [];
+        if ($ignoreMissingProperties) {
+            $queryParams['ignoreMissingProperties'] = 'true';
+        }
+        if ($this->isDryRun()) {
+            $queryParams['dryRun'] = 'true';
+        }
+
+        return $this->client->request($uri, 'PUT', $queryParams, $data)['body'] ?? [];
+    }
+
+    /**
+     * Partielles Update - ignoriert fehlende Properties automatisch
+     */
+    public function partialUpdate(array $data): array
+    {
+        return $this->update($data, true);
     }
 
     /**

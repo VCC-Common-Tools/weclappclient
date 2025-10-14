@@ -15,6 +15,12 @@ abstract class AbstractBaseQueryBuilder
 
     protected array $filters = [];
     protected array $options = [];
+    protected array $orFilters = [];
+    protected array $orGroups = [];
+    protected ?array $referencedEntities = null;
+    protected ?array $properties = null;
+    protected ?array $additionalProperties = null;
+    protected bool $dryRun = false;
 
     /**
      * Sollen alle Seiten automatisch abgefragt werden?
@@ -66,6 +72,151 @@ abstract class AbstractBaseQueryBuilder
     {
         $this->filters["{$field}-null"] = 'true';
         return $this;
+    }
+
+    public function whereNotNull(string $field): static
+    {
+        $this->filters["{$field}-notnull"] = 'true';
+        return $this;
+    }
+
+    public function whereNotIn(string $field, array $values): static
+    {
+        $this->filters["{$field}-notin"] = json_encode($values);
+        return $this;
+    }
+
+    /**
+     * OR-Filterung: Fügt eine OR-Bedingung hinzu
+     */
+    public function orWhere(string $field, string $operator, mixed $value): static
+    {
+        $key = $operator !== '' ? "or-{$field}-{$operator}" : "or-{$field}";
+        $this->orFilters[$key] = $value;
+        return $this;
+    }
+
+    public function orWhereEq(string $field, mixed $value): static     { return $this->orWhere($field, 'eq', $value); }
+    public function orWhereNe(string $field, mixed $value): static     { return $this->orWhere($field, 'ne', $value); }
+    public function orWhereGt(string $field, mixed $value): static     { return $this->orWhere($field, 'gt', $value); }
+    public function orWhereGe(string $field, mixed $value): static     { return $this->orWhere($field, 'ge', $value); }
+    public function orWhereLt(string $field, mixed $value): static     { return $this->orWhere($field, 'lt', $value); }
+    public function orWhereLe(string $field, mixed $value): static     { return $this->orWhere($field, 'le', $value); }
+    public function orWhereLike(string $field, mixed $value): static   { return $this->orWhere($field, 'like', $value); }
+    public function orWhereILike(string $field, mixed $value): static  { return $this->orWhere($field, 'ilike', $value); }
+    public function orWhereNotLike(string $field, mixed $value): static { return $this->orWhere($field, 'notlike', $value); }
+    public function orWhereNotILike(string $field, mixed $value): static { return $this->orWhere($field, 'notilike', $value); }
+    public function orWhereIn(string $field, array $values): static
+    {
+        $this->orFilters["or-{$field}-in"] = json_encode($values);
+        return $this;
+    }
+    public function orWhereNotIn(string $field, array $values): static
+    {
+        $this->orFilters["or-{$field}-notin"] = json_encode($values);
+        return $this;
+    }
+    public function orWhereNull(string $field): static
+    {
+        $this->orFilters["or-{$field}-null"] = 'true';
+        return $this;
+    }
+    public function orWhereNotNull(string $field): static
+    {
+        $this->orFilters["or-{$field}-notnull"] = 'true';
+        return $this;
+    }
+
+    /**
+     * OR-Gruppierung: Erstellt eine gruppierte OR-Bedingung
+     */
+    public function orWhereGroup(string $groupName, callable $callback): static
+    {
+        $groupBuilder = new class($this->client, $this->endpoint) extends AbstractBaseQueryBuilder {
+            public function getOrFilters(): array { return $this->orFilters; }
+        };
+        
+        $callback($groupBuilder);
+        $groupFilters = $groupBuilder->getOrFilters();
+        
+        foreach ($groupFilters as $key => $value) {
+            $newKey = str_replace('or-', "or{$groupName}-", $key);
+            $this->orGroups[$newKey] = $value;
+        }
+        
+        return $this;
+    }
+
+    /**
+     * Filter-Ausdrücke (Beta-Feature): Rohe Filter-Ausdrücke
+     * 
+     * @warning Dies ist ein Beta-Feature der weclapp API
+     */
+    public function whereRaw(string $filterExpression): static
+    {
+        $this->options['filter'] = $filterExpression;
+        return $this;
+    }
+
+    /**
+     * Lädt referenzierte Entitäten in derselben Anfrage
+     * 
+     * @param string|array $references Primärschlüssel-Referenzen (z.B. 'unitId' oder ['unitId', 'articleCategoryId'])
+     */
+    public function includeReferencedEntities(string|array $references): static
+    {
+        $this->referencedEntities = is_array($references) ? $references : [$references];
+        return $this;
+    }
+
+    /**
+     * Selektive Rückgabe spezifischer Felder (Bandbreiten-Optimierung)
+     * 
+     * @param string|array $fields Feldnamen oder Eigenschaftspfade (z.B. 'id' oder ['id', 'customerNumber', 'contacts.lastName'])
+     */
+    public function properties(string|array $fields): static
+    {
+        $this->properties = is_array($fields) ? $fields : [$fields];
+        return $this;
+    }
+
+    /**
+     * Lädt optionale berechnete Eigenschaften
+     * 
+     * @param string|array $properties Namen der zusätzlichen Eigenschaften (z.B. 'currentSalesPrice')
+     */
+    public function additionalProperties(string|array $properties): static
+    {
+        $this->additionalProperties = is_array($properties) ? $properties : [$properties];
+        return $this;
+    }
+
+    /**
+     * Aktiviert Null-Serialisierung für explizite Null-Werte
+     */
+    public function serializeNulls(): static
+    {
+        $this->options['serializeNulls'] = 'true';
+        return $this;
+    }
+
+    /**
+     * Aktiviert Dry-Run-Modus für Operationen
+     * 
+     * @warning Im Dry-Run-Modus werden Operationen validiert aber nicht ausgeführt
+     */
+    public function dryRun(): static
+    {
+        $this->dryRun = true;
+        return $this;
+    }
+
+    /**
+     * Prüft ob Dry-Run aktiviert ist
+     */
+    public function isDryRun(): bool
+    {
+        return $this->dryRun;
     }
 
     /**
@@ -120,10 +271,30 @@ abstract class AbstractBaseQueryBuilder
 
     public function buildQueryParams(): array
     {
-        $params = array_merge($this->filters, $this->options);
+        $params = array_merge($this->filters, $this->options, $this->orFilters, $this->orGroups);
 
         if (!empty($this->orderFields)) {
             $params['sort'] = implode(',', $this->orderFields);
+        }
+
+        // Referenced Entities
+        if ($this->referencedEntities) {
+            $params['includeReferencedEntities'] = implode(',', $this->referencedEntities);
+        }
+
+        // Properties
+        if ($this->properties) {
+            $params['properties'] = implode(',', $this->properties);
+        }
+
+        // Additional Properties
+        if ($this->additionalProperties) {
+            $params['additionalProperties'] = implode(',', $this->additionalProperties);
+        }
+
+        // Dry-Run
+        if ($this->dryRun) {
+            $params['dryRun'] = 'true';
         }
 
         // maxTotal wird NICHT als Query-Parameter gesendet, da es nur intern für Limitierung verwendet wird

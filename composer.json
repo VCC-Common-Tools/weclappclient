@@ -1,7 +1,7 @@
 {
     "name": "voipcompetencecenter/weclappclient",
-    "description": "Ein PHP-Client für die Weclapp REST-API v1",
-    "version": "1.0.1",
+    "description": "Ein PHP-Client für die Weclapp REST-API v2 mit vollständiger Feature-Unterstützung",
+    "version": "2.0.0",
     "authors": [
         {
             "name": "Frank Alegria",
@@ -19,7 +19,9 @@
         "weclapp",
         "rest-api",
         "php",
-        "client"
+        "client",
+        "v2",
+        "rfc7807"
     ],
     "homepage": "https://github.com/VCC-Common-Tools/weclappclient",
     "autoload": {

@@ -5,7 +5,119 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2025-01-15
+
+### 🚀 Major Release: Migration auf weclapp API v2
+
+Dieses Major-Release migriert den WeclappClient auf die weclapp API v2 und implementiert alle bisher fehlenden Features für einen vollständigen, modernen API-Client.
+
+### Added
+
+#### 🔧 API-Version-Unterstützung
+- **Flexible API-Version**: Konstruktor-Parameter `$apiVersion` (Standard: v2, Legacy: v1)
+- **Automatische URL-Generierung**: Dynamische Basis-URL basierend auf API-Version
+- **Getter-Methode**: `getApiVersion()` für Debugging und Logging
+
+#### 🔍 Erweiterte Filter-Operatoren
+- **Neue Operatoren**: `whereNotNull()`, `whereNotIn()` für vollständige Filter-Abdeckung
+- **OR-Filterung**: `orWhere()`, `orWhereEq()`, `orWhereNe()`, etc. für OR-Bedingungen
+- **OR-Gruppierung**: `orWhereGroup()` für komplexe gruppierte OR-Ausdrücke
+- **Filter-Ausdrücke**: `whereRaw()` für Beta-Feature komplexer Filter-Ausdrücke
+
+#### 🛡️ Vollständiges Error Handling (RFC 7807)
+- **40+ Error Codes**: Vollständige Abdeckung aller weclapp API-Fehlertypen
+- **RFC 7807 Mapping**: `getType()`, `getTitle()`, `getDetail()`, `getInstance()`
+- **Validierungsfehler**: Strukturierte `WeclappValidationError` Klasse
+- **Automatische Typ-Erkennung**: `fromApiType()` für API-Fehlertyp-Mapping
+
+#### ⚡ Performance-Optimierungen
+- **Referenced Entities**: `includeReferencedEntities()` - Lädt referenzierte Entitäten in einer Anfrage
+- **Properties-Filter**: `properties()` - Selektive Feldauswahl für Bandbreiten-Optimierung
+- **Additional Properties**: `additionalProperties()` - Optionale berechnete Eigenschaften
+
+#### 🔄 Erweiterte Update-Funktionen
+- **Partial Updates**: `partialUpdate()` und `update($data, true)` mit `ignoreMissingProperties`
+- **Dry-Run-Modus**: `dryRun()` für sichere Validierung ohne Ausführung
+- **Null-Serialisierung**: `serializeNulls()` für explizite Null-Werte
+
+### Changed
+
+#### ⚠️ Breaking Changes (Minimal)
+- **Standard-API-Version**: Ändert sich von v1 auf v2 (Legacy v1 weiter nutzbar)
+- **Update-Methode**: Neue Signatur `update(array $data, bool $ignoreMissingProperties = false)`
+
+#### 🔄 Verbesserungen
+- **QueryBuilder**: Erweiterte `buildQueryParams()` für alle neuen Features
+- **Error Handling**: Verbesserte RFC 7807 Konformität
+- **Dokumentation**: Vollständige PHPDoc-Kommentare für alle neuen Methoden
+
+### Migration Guide
+
+#### Von v1.x zu v2.0.0
+
+**1. API-Version (Optional)**
+```php
+// v1.x (alt)
+$client = new WeclappClient('tenant', 'token');
+
+// v2.0.0 (Standard: v2)
+$client = new WeclappClient('tenant', 'token'); // Nutzt automatisch v2
+
+// Explizit v1 (Legacy)
+$client = new WeclappClient('tenant', 'token', null, 1);
+```
+
+**2. Update-Methode (Optional)**
+```php
+// v1.x (alt)
+$client->query('party')->update($data);
+
+// v2.0.0 (kompatibel)
+$client->query('party')->update($data); // Funktioniert weiterhin
+
+// v2.0.0 (neue Features)
+$client->query('party')->partialUpdate($data); // Partielles Update
+$client->query('party')->dryRun()->update($data); // Dry-Run
+```
+
+**3. Neue Features nutzen**
+```php
+// Erweiterte Filter
+$client->query('party')
+    ->whereNotNull('email')
+    ->orWhere('firstName', 'eq', 'Max')
+    ->orWhereGroup('group1', fn($q) => $q->orWhere('lastName', 'eq', 'Mustermann'))
+    ->whereRaw('(age > 18) and (city = "Berlin")')
+    ->getResult();
+
+// Performance-Optimierung
+$client->query('article')
+    ->properties(['id', 'name', 'unitId'])
+    ->includeReferencedEntities(['unitId', 'articleCategoryId'])
+    ->additionalProperties('currentSalesPrice')
+    ->getResult();
+
+// Vollständiges Error Handling
+try {
+    $result = $client->query('party')->create($data);
+} catch (WeclappApiException $e) {
+    echo $e->getTitle(); // RFC 7807 Titel
+    echo $e->getDetail(); // Detaillierte Erklärung
+    foreach ($e->getValidationErrors() as $error) {
+        echo $error->getLocation(); // JsonPath der betroffenen Eigenschaft
+    }
+}
+```
+
+### Technical Details
+- **PHP 8.2+**: Unveränderte Mindestanforderung
+- **Guzzle HTTP**: Weiterhin für robuste API-Kommunikation
+- **PSR-4 Autoloading**: Unverändert
+- **MIT Lizenz**: Unverändert
+
+---
+
+## [1.0.1] - 2025-01-15
 
 ### Fixed
 - **Kritischer Bugfix**: `maxTotal` Parameter wird nicht mehr als Query-Parameter an die Weclapp API gesendet

@@ -31,6 +31,11 @@ class WeclappClient
     private ClientInterface $client;
 
     /**
+     * API-Version (1 oder 2)
+     */
+    private int $apiVersion;
+
+    /**
      * Letzter aufgerufener Endpunkt (inkl. Methode)
      */
     private string $lastUrl = '';
@@ -46,10 +51,20 @@ class WeclappClient
      * @param string $subdomain Die Weclapp-Subdomain
      * @param string $accessToken Der API-Token
      * @param ClientInterface|null $client Optionaler eigener Guzzle-Client
+     * @param int $apiVersion API-Version (1 oder 2, Standard: 2)
+     * 
+     * @throws \InvalidArgumentException wenn eine ungültige API-Version angegeben wird
      */
-    public function __construct(string $subdomain, string $accessToken, ClientInterface $client = null)
+    public function __construct(string $subdomain, string $accessToken, ClientInterface $client = null, int $apiVersion = 2)
     {
-        $this->apiBaseUrl = "https://{$subdomain}.weclapp.com/webapp/api/v1/";
+        // Validiere API-Version
+        if (!in_array($apiVersion, [1, 2], true))
+        {
+            throw new \InvalidArgumentException("Ungültige API-Version: {$apiVersion}. Erlaubt sind 1 oder 2.");
+        }
+
+        $this->apiVersion = $apiVersion;
+        $this->apiBaseUrl = "https://{$subdomain}.weclapp.com/webapp/api/v{$apiVersion}/";
         $this->accessToken = $accessToken;
         $this->client = $client ?? new Client();
     }
@@ -146,6 +161,16 @@ class WeclappClient
         return $msg && $status
             ? "[HTTP $status] $msg"
             : $msg;
+    }
+
+    /**
+     * Gibt die aktuelle API-Version zurück
+     *
+     * @return int
+     */
+    public function getApiVersion(): int
+    {
+        return $this->apiVersion;
     }
 
 
