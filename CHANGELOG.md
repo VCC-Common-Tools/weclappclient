@@ -5,6 +5,32 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-01-15
+
+### Fixed
+
+#### 🔧 Custom Attribute Filter
+- **Kritischer Bugfix**: `whereCustomAttribute()` verwendet jetzt das korrekte Filter-Format für weclapp API v2
+  - **Vorher**: `customAttributes-eq=JSON` (falsch)
+  - **Nachher**: `customAttribute{ID}-eq=VALUE` (korrekt)
+  - Behebt den Fehler "unexpected filter property" bei Custom Attribute Filtern
+  - Unterstützt alle Custom Attribute Typen: `stringValue`, `numberValue`, `booleanValue`, `dateValue`, `selectedValueId`
+  - Spezielle Unterstützung für Entity-Referenzen: `customAttribute{ID}.entityReferences.entityId-eq=VALUE`
+  - Unterstützung für LIST/MULTISELECT_LIST: `customAttribute{ID}.value-eq=VALUE`
+
+#### 🔍 Debugging-Verbesserung
+- **getLastUrl() Enhancement**: Zeigt jetzt alle Query-Parameter in der URL an
+  - Vorher: Nur Basis-URL ohne Parameter
+  - Nachher: Vollständige URL mit allen Query-Parametern
+  - Sehr nützlich für Debugging und API-Testing
+
+### Technical Details
+- Keine Breaking Changes
+- Vollständig rückwärtskompatibel
+- Verbesserte API-Konformität mit weclapp v2
+
+---
+
 ## [2.0.0] - 2025-01-15
 
 ### 🚀 Major Release: Migration auf weclapp API v2

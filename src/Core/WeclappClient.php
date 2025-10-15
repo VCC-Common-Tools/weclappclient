@@ -81,7 +81,14 @@ class WeclappClient
     public function request(string $endpoint, string $method = 'GET', array $queryParams = [], array $bodyParams = []): array
     {
         $url = "{$this->apiBaseUrl}{$endpoint}";
-        $this->lastUrl = "$method $url";
+        
+        // Füge Query-Parameter zur URL hinzu für Debugging
+        if (!empty($queryParams)) {
+            $urlWithParams = $url . '?' . http_build_query($queryParams);
+            $this->lastUrl = "$method $urlWithParams";
+        } else {
+            $this->lastUrl = "$method $url";
+        }
 
         $options = [
             'headers' => [

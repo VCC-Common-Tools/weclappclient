@@ -57,9 +57,86 @@ abstract class AbstractBaseQueryBuilder
     public function whereNotLike(string $field, mixed $value): static { return $this->where($field, 'notlike', $value); }
     public function whereNotILike(string $field, mixed $value): static { return $this->where($field, 'notilike', $value); }
 
+    /**
+     * Filter für Custom Fields (Legacy v1 Methode)
+     * 
+     * @deprecated Verwenden Sie whereCustomAttribute() für v2 API
+     */
     public function whereCustomField(int $customFieldId, string $operator, mixed $value): static
     {
         return $this->where("customField{$customFieldId}", $operator, $value);
+    }
+
+    /**
+     * Filter für Custom Attributes (v2 API)
+     * 
+     * @param string $attributeDefinitionId Die ID der Custom Attribute Definition
+     * @param string $operator Filter-Operator (eq, ne, gt, lt, like, etc.)
+     * @param mixed $value Der zu filternde Wert
+     * @param string $valueType Der Typ des Wertes (stringValue, booleanValue, numberValue, dateValue, selectedValueId, entityReferences.entityId)
+     */
+    public function whereCustomAttribute(string $attributeDefinitionId, string $operator, mixed $value, string $valueType = 'stringValue'): static
+    {
+        // Custom Attributes werden mit dem Format customAttribute{ID}-operator gefiltert
+        $fieldName = "customAttribute{$attributeDefinitionId}";
+        
+        // Spezielle Pfade für komplexe Werte
+        if ($valueType === 'entityReferences.entityId') {
+            $fieldName .= ".entityReferences.entityId";
+        } elseif ($valueType === 'value') {
+            $fieldName .= ".value";
+        }
+        // Für alle anderen Werttypen (stringValue, booleanValue, numberValue, dateValue, selectedValueId)
+        // wird kein Suffix verwendet - die API erkennt den Typ automatisch
+        
+        return $this->where($fieldName, $operator, $value);
+    }
+
+    /**
+     * Convenience-Methoden für verschiedene Custom Attribute Typen
+     */
+    public function whereCustomAttributeString(string $attributeDefinitionId, string $operator, string $value): static
+    {
+        return $this->whereCustomAttribute($attributeDefinitionId, $operator, $value, 'stringValue');
+    }
+
+    public function whereCustomAttributeBoolean(string $attributeDefinitionId, string $operator, bool $value): static
+    {
+        return $this->whereCustomAttribute($attributeDefinitionId, $operator, $value, 'booleanValue');
+    }
+
+    public function whereCustomAttributeNumber(string $attributeDefinitionId, string $operator, float|int $value): static
+    {
+        return $this->whereCustomAttribute($attributeDefinitionId, $operator, $value, 'numberValue');
+    }
+
+    public function whereCustomAttributeDate(string $attributeDefinitionId, string $operator, int|string $value): static
+    {
+        // Konvertiere String-Datum zu Timestamp falls nötig
+        if (is_string($value)) {
+            $value = strtotime($value) * 1000; // weclapp verwendet Millisekunden
+        }
+        return $this->whereCustomAttribute($attributeDefinitionId, $operator, $value, 'dateValue');
+    }
+
+    /**
+     * OR-Filter für Custom Attributes
+     */
+    public function orWhereCustomAttribute(string $attributeDefinitionId, string $operator, mixed $value, string $valueType = 'stringValue'): static
+    {
+        // Custom Attributes werden mit dem Format customAttribute{ID}-operator gefiltert
+        $fieldName = "customAttribute{$attributeDefinitionId}";
+        
+        // Spezielle Pfade für komplexe Werte
+        if ($valueType === 'entityReferences.entityId') {
+            $fieldName .= ".entityReferences.entityId";
+        } elseif ($valueType === 'value') {
+            $fieldName .= ".value";
+        }
+        // Für alle anderen Werttypen (stringValue, booleanValue, numberValue, dateValue, selectedValueId)
+        // wird kein Suffix verwendet - die API erkennt den Typ automatisch
+        
+        return $this->orWhere($fieldName, $operator, $value);
     }
     
     public function whereIn(string $field, array $values): static
