@@ -138,6 +138,42 @@ abstract class AbstractBaseQueryBuilder
         
         return $this->orWhere($fieldName, $operator, $value);
     }
+
+    /**
+     * Spezielle Parameter ohne Operator-Suffix
+     * 
+     * Diese Methoden sind für Endpunkte gedacht, die spezielle Parameter benötigen,
+     * die nicht über die normale where() Methode abgebildet werden können.
+     * Sie verwenden das $options Array, genau wie page, pageSize, sort, etc.
+     */
+    
+    /**
+     * Setzt den Entity-Namen (z.B. für document, comment Endpunkte)
+     */
+    public function entityName(string $entityName): static
+    {
+        $this->options['entityName'] = $entityName;
+        return $this;
+    }
+    
+    /**
+     * Setzt die Entity-ID (z.B. für document, comment Endpunkte)
+     */
+    public function entityId(string|int $entityId): static
+    {
+        $this->options['entityId'] = (string) $entityId;
+        return $this;
+    }
+    
+    
+    /**
+     * Generische Methode für spezielle Parameter
+     */
+    public function param(string $name, mixed $value): static
+    {
+        $this->options[$name] = $value;
+        return $this;
+    }
     
     public function whereIn(string $field, array $values): static
     {

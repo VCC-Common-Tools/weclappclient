@@ -8,6 +8,8 @@ Responses are returned as native PHP arrays with full RFC 7807 error handling.
 
 - **API v2 Migration**: Full support for weclapp API v2 with legacy v1 compatibility
 - **Advanced Filtering**: OR conditions, grouping, raw filter expressions (Beta)
+- **Custom Attributes**: Type-safe filtering for custom fields with automatic data conversion
+- **Special Parameters**: Elegant handling of endpoint-specific parameters (entityName, entityId)
 - **Performance Optimization**: Referenced entities, selective properties, additional properties
 - **Enhanced Updates**: Partial updates, dry-run mode, null serialization
 - **Complete Error Handling**: RFC 7807 compliant with 40+ error types
@@ -83,6 +85,65 @@ $results = $client->query('/party')
 // Raw Filter Expressions (Beta)
 $results = $client->query('/party')
     ->whereRaw('(age >= 18) and (customer = true)')
+    ->getResult();
+```
+
+### Custom Attributes (v2.0.0)
+
+Type-safe filtering for custom fields with automatic data conversion:
+
+```php
+// String Custom Attributes
+$results = $client->query('/party')
+    ->whereCustomAttributeString('customer-note', 'like', '%VIP%')
+    ->getResult();
+
+// Boolean Custom Attributes
+$results = $client->query('/party')
+    ->whereCustomAttributeBoolean('is-premium', 'eq', true)
+    ->getResult();
+
+// Number Custom Attributes
+$results = $client->query('/party')
+    ->whereCustomAttributeNumber('credit-limit', 'gt', 10000)
+    ->getResult();
+
+// Date Custom Attributes (automatic string → timestamp conversion)
+$results = $client->query('/party')
+    ->whereCustomAttributeDate('last-contact', 'gt', '2024-01-01')
+    ->getResult();
+
+// OR-Filter with Custom Attributes
+$results = $client->query('/party')
+    ->orWhereCustomAttribute('customer-tier', 'eq', 'Gold', 'stringValue')
+    ->orWhereCustomAttribute('customer-tier', 'eq', 'Platinum', 'stringValue')
+    ->getResult();
+```
+
+### Special Parameters (v2.0.0)
+
+Elegant handling of endpoint-specific parameters without operator suffixes:
+
+```php
+// Document Endpoint - requires entityName and entityId
+$documents = $client->query('/document')
+    ->entityName('party')
+    ->entityId('12345')
+    ->whereLike('name', '%Rechnung%')
+    ->orderBy('createdDate', 'desc')
+    ->getResult();
+
+// Comment Endpoint - requires entityName and entityId
+$comments = $client->query('/comment')
+    ->entityName('party')
+    ->entityId('12345')
+    ->orderBy('createdDate', 'desc')
+    ->getResult();
+
+// Generic parameters for any endpoint
+$results = $client->query('/custom-endpoint')
+    ->param('customParam', 'customValue')
+    ->param('anotherParam', 123)
     ->getResult();
 ```
 
@@ -259,6 +320,18 @@ All new features are **optional** and **backward compatible**:
 $results = $client->query('/party')
     ->whereNotNull('email')
     ->orWhere('firstName', 'eq', 'Max')
+    ->getResult();
+
+// Use custom attributes (replaces legacy customField methods)
+$results = $client->query('/party')
+    ->whereCustomAttributeString('customer-note', 'like', '%VIP%')
+    ->whereCustomAttributeBoolean('is-premium', 'eq', true)
+    ->getResult();
+
+// Use special parameters for document/comment endpoints
+$results = $client->query('/document')
+    ->entityName('party')
+    ->entityId('12345')
     ->getResult();
 
 // Use performance optimizations

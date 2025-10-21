@@ -7,6 +7,27 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [2.0.1] - 2025-01-15
 
+### Added
+
+#### 🏷️ Custom Attributes (v2.0.0)
+- **Type-safe Custom Attribute Filtering**: Vollständige Unterstützung für weclapp Custom Attributes
+  - `whereCustomAttributeString()` - String-Werte mit automatischer Typ-Erkennung
+  - `whereCustomAttributeBoolean()` - Boolean-Werte mit Typ-Sicherheit
+  - `whereCustomAttributeNumber()` - Numerische Werte (int/float)
+  - `whereCustomAttributeDate()` - Datum-Werte mit automatischer String→Timestamp Konvertierung
+  - `orWhereCustomAttribute()` - OR-Filter für Custom Attributes
+  - Unterstützt alle Custom Attribute Typen: `stringValue`, `booleanValue`, `numberValue`, `dateValue`, `selectedValueId`
+  - Spezielle Unterstützung für Entity-Referenzen: `customAttribute{ID}.entityReferences.entityId-eq=VALUE`
+  - Unterstützung für LIST/MULTISELECT_LIST: `customAttribute{ID}.value-eq=VALUE`
+
+#### 🔧 Special Parameters (v2.0.0)
+- **Endpoint-specific Parameters**: Elegante Behandlung von Parametern ohne Operator-Suffix
+  - `entityName()` - Setzt Entity-Namen für document/comment Endpunkte
+  - `entityId()` - Setzt Entity-ID für document/comment Endpunkte
+  - `param()` - Generische Methode für beliebige Parameter
+  - Konsistente Integration in das bestehende `$options` Array (wie `page`, `pageSize`, `sort`)
+  - Method Chaining für bessere Lesbarkeit: `->entityName('party')->entityId('12345')`
+
 ### Fixed
 
 #### 🔧 Custom Attribute Filter
@@ -14,9 +35,6 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   - **Vorher**: `customAttributes-eq=JSON` (falsch)
   - **Nachher**: `customAttribute{ID}-eq=VALUE` (korrekt)
   - Behebt den Fehler "unexpected filter property" bei Custom Attribute Filtern
-  - Unterstützt alle Custom Attribute Typen: `stringValue`, `numberValue`, `booleanValue`, `dateValue`, `selectedValueId`
-  - Spezielle Unterstützung für Entity-Referenzen: `customAttribute{ID}.entityReferences.entityId-eq=VALUE`
-  - Unterstützung für LIST/MULTISELECT_LIST: `customAttribute{ID}.value-eq=VALUE`
 
 #### 🔍 Debugging-Verbesserung
 - **getLastUrl() Enhancement**: Zeigt jetzt alle Query-Parameter in der URL an
@@ -28,6 +46,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Keine Breaking Changes
 - Vollständig rückwärtskompatibel
 - Verbesserte API-Konformität mit weclapp v2
+- Konsistente Architektur mit bestehenden `$options` Array
 
 ---
 
@@ -114,6 +133,20 @@ $client->query('party')
     ->orWhere('firstName', 'eq', 'Max')
     ->orWhereGroup('group1', fn($q) => $q->orWhere('lastName', 'eq', 'Mustermann'))
     ->whereRaw('(age > 18) and (city = "Berlin")')
+    ->getResult();
+
+// Custom Attributes (ersetzt Legacy customField)
+$client->query('party')
+    ->whereCustomAttributeString('customer-note', 'like', '%VIP%')
+    ->whereCustomAttributeBoolean('is-premium', 'eq', true)
+    ->whereCustomAttributeDate('last-contact', 'gt', '2024-01-01')
+    ->getResult();
+
+// Special Parameters für document/comment Endpunkte
+$client->query('document')
+    ->entityName('party')
+    ->entityId('12345')
+    ->whereLike('name', '%Rechnung%')
     ->getResult();
 
 // Performance-Optimierung
