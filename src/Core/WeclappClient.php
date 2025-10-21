@@ -191,29 +191,124 @@ class WeclappClient
      *
      * @throws WeclappApiException bei Kommunikationsfehlern
      */
-    public function binaryRequest(string $endpoint, array $queryParams = [], bool $asBase64 = false): string
+    public function binaryRequest(string $endpoint, string $method = 'GET', array $queryParams = [], ?string $binaryData = null, ?string $contentType = null, bool $asBase64 = false): string|array
     {
         $url = "{$this->apiBaseUrl}{$endpoint}";
+        
+        // Setze letzte URL für Debugging
+        $this->lastUrl = "$method $url";
 
         $options = [
             'headers' => [
-                'AuthenticationToken' => $this->accessToken,
-                'Accept' => '*/*' // wichtig für Binärdaten
+                'AuthenticationToken' => $this->accessToken
             ],
             'query' => $queryParams
         ];
 
+        // Konfiguriere Header je nach Methode
+        if ($method === 'GET')
+        {
+            $options['headers']['Accept'] = '*/*'; // wichtig für Binärdaten
+        }
+        else
+        {
+            // Für Uploads
+            if ($contentType)
+            {
+                $options['headers']['Content-Type'] = $contentType;
+            }
+            else
+            {
+                // Fallback für binäre Uploads ohne spezifischen Content-Type
+                $options['headers']['Content-Type'] = '*/*';
+            }
+            
+            if ($binaryData !== null)
+            {
+                $options['body'] = $binaryData;
+            }
+        }
+
         try 
         {
-            $response = $this->client->request('GET', $url, $options);
-            $binaryData = $response->getBody()->getContents();
-
-            return $asBase64 ? base64_encode($binaryData) : $binaryData;
-        } catch (RequestException $e) 
+            $response = $this->client->request($method, $url, $options);
+            
+            if ($method === 'GET')
+            {
+                // Download: Binärdaten zurückgeben
+                $binaryContent = $response->getBody()->getContents();
+                return $asBase64 ? base64_encode($binaryContent) : $binaryContent;
+            }
+            else
+            {
+                // Upload: JSON-Response zurückgeben
+                $body = json_decode($response->getBody()->getContents(), true) ?? [];
+                
+                $meta = [
+                    'status_code' => $response->getStatusCode(),
+                    'headers' => $response->getHeaders()
+                ];
+                
+                return $this->lastResponse = ['body' => $body, 'meta' => $meta];
+            }
+        } 
+        catch (RequestException $e) 
         {
             // Zentrale Fehlerauswertung via Exception-Fabrik
             throw WeclappApiException::fromRequestException($e);
         }
+    }
+
+    /**
+     * Hilfsfunktion: Ermittelt die Dateiendung basierend auf dem MIME-Type
+     * Unterstützt nur die von Weclapp erlaubten MIME-Types
+     *
+     * @param string $mimeType MIME-Type (z. B. application/pdf)
+     * @return string Dateiendung ohne Punkt (z. B. pdf)
+     */
+    private function getFileExtensionFromMimeType(string $mimeType): string
+    {
+        $mimeToExtension = [
+            'application/pdf' => 'pdf',
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png'
+        ];
+        
+        return $mimeToExtension[$mimeType] ?? 'bin';
+    }
+
+    /**
+     * Spezielle Methode für binäre Uploads (POST/PUT)
+     *
+     * @param string $endpoint z. B. /customerImage
+     * @param string $binaryData Binärdaten zum Upload
+     * @param string $method HTTP-Methode (POST oder PUT)
+     * @param string|null $contentType Optional: Content-Type (z. B. image/jpeg)
+     * @param array $queryParams Optional: Query-Parameter
+     * @param string|null $fileName Optional: Dateiname (wird automatisch generiert wenn nicht angegeben)
+     * @return array Upload-Response mit body und meta
+     *
+     * @throws WeclappApiException bei Kommunikationsfehlern
+     */
+    public function binaryUpload(string $endpoint, string $binaryData, string $method = 'POST', ?string $contentType = null, array $queryParams = [], ?string $fileName = null): array
+    {
+        // Generiere automatisch Dateinamen wenn nicht angegeben
+        if ($fileName === null && $contentType) 
+        {
+            $extension = $this->getFileExtensionFromMimeType($contentType);
+            $fileName = "uploaded-file.{$extension}";
+        }
+        
+        // Füge Dateinamen zu Query-Parametern hinzu wenn vorhanden
+        if ($fileName && !isset($queryParams['name'])) 
+        {
+            $queryParams['name'] = $fileName;
+        }
+        
+        $result = $this->binaryRequest($endpoint, $method, $queryParams, $binaryData, $contentType);
+        
+        // binaryRequest gibt bei Uploads bereits ein Array zurück
+        return is_array($result) ? $result : ['body' => [], 'meta' => ['status_code' => 200]];
     }
 
         /**

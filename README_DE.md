@@ -99,6 +99,55 @@ $updated = $client->query('/customer')->update([
 $success = $client->query('/customer')->delete($created['id']);
 ```
 
+## 📄 Binäre Daten (Downloads & Uploads)
+
+### Downloads
+
+```php
+// PDF-Dokument herunterladen
+$pdfData = $client->binaryRequest('/document', 'GET', [
+    'entityName' => 'salesOrder',
+    'entityId' => '123456'
+]);
+
+// Als Base64-kodierte Zeichenkette
+$base64Data = $client->binaryRequest('/document', 'GET', [
+    'entityName' => 'salesOrder', 
+    'entityId' => '123456'
+], asBase64: true);
+```
+
+### Uploads
+
+```php
+// PDF-Dokument hochladen (automatische Dateiendung)
+$result = $client->binaryUpload('document/upload', $pdfData, 'POST', 'application/pdf', [
+    'entityName' => 'salesOrder',
+    'entityId' => '123456'
+    // name wird automatisch zu "uploaded-file.pdf"
+]);
+
+// Mit explizitem Dateinamen
+$result = $client->binaryUpload('document/upload', $imageData, 'POST', 'image/jpeg', [
+    'entityName' => 'salesOrder',
+    'entityId' => '123456',
+    'name' => 'rechnung.jpg',
+    'description' => 'Rechnungsbeleg'
+]);
+
+// Direkt mit binaryRequest
+$result = $client->binaryRequest('document/upload', 'POST', [
+    'entityName' => 'salesOrder',
+    'entityId' => '123456',
+    'name' => 'dokument.pdf'
+], $binaryData, 'application/pdf');
+```
+
+**Unterstützte MIME-Types:**
+- `application/pdf` → `.pdf`
+- `image/jpeg` → `.jpg`
+- `image/png` → `.png`
+
 ## 📄 Rückgabeformat
 
 Alle Abfragen liefern Arrays im Weclapp-Format zurück (entspricht `response['body']['result']`).
@@ -123,6 +172,9 @@ php tests/test_query_params.php
 
 # first() Methode testen (mit API-Aufrufen)
 php tests/test_first_method.php
+
+# Binäre Uploads testen
+php tests/test_binary_upload.php
 ```
 
 Erstellen Sie eine `.env` Datei im `tests/` Verzeichnis mit Ihren Weclapp-Zugangsdaten:

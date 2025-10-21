@@ -5,6 +5,35 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-01-15
+
+### Added
+
+#### 📤 Binary Upload Support
+- **Erweiterte binaryRequest Methode**: Unterstützt jetzt GET, POST und PUT für binäre Daten
+  - GET: Download von Binärdaten (wie bisher)
+  - POST/PUT: Upload von Binärdaten mit korrekten Headers
+  - Automatischer Content-Type Fallback auf `*/*` wenn nicht spezifiziert
+- **Neue binaryUpload Methode**: Benutzerfreundliche Upload-Methode
+  - Automatische Dateiendung basierend auf MIME-Type
+  - Automatische Dateinamen-Generierung wenn nicht angegeben
+  - Unterstützt nur Weclapp-konforme MIME-Types: `application/pdf`, `image/jpeg`, `image/png`
+- **MIME-Type zu Dateiendung Mapping**:
+  - `application/pdf` → `.pdf`
+  - `image/jpeg` → `.jpg`
+  - `image/png` → `.png`
+- **Test-Suite**: Vollständiger Test für Upload-Funktionalität (`tests/test_binary_upload.php`)
+
+### Changed
+- **binaryRequest Signatur erweitert**: Neue Parameter für Upload-Funktionalität
+- **Dokumentation**: README_DE.md mit Upload-Beispielen erweitert
+
+### Technical Details
+- Korrekte Verwendung des `/document/upload` Endpunkts
+- Erforderliche Parameter: `entityName`, `entityId`, `name`
+- Optionale Parameter: `description`, `documentType`
+- Automatische Header-Konfiguration je nach HTTP-Methode
+
 ## [2.0.1] - 2025-01-15
 
 ### Added
