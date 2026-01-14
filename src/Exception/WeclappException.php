@@ -15,7 +15,7 @@ class WeclappException extends Exception
     public function __construct(
         string $message,
         WeclappErrorCode $errorCode = WeclappErrorCode::Unknown,
-        \Throwable $previous = null
+        ?\Throwable $previous = null
     )
     {
         $this->errorCode = $errorCode;

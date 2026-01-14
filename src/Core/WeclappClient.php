@@ -55,7 +55,7 @@ class WeclappClient
      * 
      * @throws \InvalidArgumentException wenn eine ungültige API-Version angegeben wird
      */
-    public function __construct(string $subdomain, string $accessToken, ClientInterface $client = null, int $apiVersion = 2)
+    public function __construct(string $subdomain, string $accessToken, ?ClientInterface $client = null, int $apiVersion = 2)
     {
         // Validiere API-Version
         if (!in_array($apiVersion, [1, 2], true))

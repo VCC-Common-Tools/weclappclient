@@ -5,6 +5,21 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2025-01-15
+
+### Fixed
+
+#### 🔧 PHP 8.4 Kompatibilität
+- **Deprecation-Warnungen behoben**: Explizite nullable Typen für Parameter mit `= null` Default-Wert
+  - `WeclappClient::__construct()`: `ClientInterface $client = null` → `?ClientInterface $client = null`
+  - `WeclappException::__construct()`: `\Throwable $previous = null` → `?\Throwable $previous = null`
+  - Behebt PHP 8.4 Deprecation-Warnungen für implizit nullable Parameter
+
+### Technical Details
+- Vollständig rückwärtskompatibel
+- Keine Breaking Changes
+- PHP 8.4-konform
+
 ## [2.1.0] - 2025-01-15
 
 ### Added
