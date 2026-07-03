@@ -77,6 +77,12 @@ class QueryBuilder extends AbstractBaseQueryBuilder
         $pageSize = $this->options['pageSize'] ?? 100;
         $maxTotal = $this->maxTotal;
 
+        // Bei gesetztem Limit nicht mehr pro Seite anfordern als insgesamt benötigt.
+        if ($maxTotal !== null)
+        {
+            $pageSize = min($pageSize, $maxTotal);
+        }
+
         do
         {
             // Setze aktuelle Seite
@@ -105,20 +111,6 @@ class QueryBuilder extends AbstractBaseQueryBuilder
         return $all;
     }
 
-
-    /**
-     * Führt eine /count-Abfrage durch und gibt die Anzahl zurück
-     *
-     * @return int
-     */
-    public function count(): int
-    {
-        $uri = rtrim($this->endpoint, '/') . '/count';
-
-        $response = $this->client->request($uri, 'GET', $this->filters);
-
-        return (int) ($response['body']['result'] ?? 0);
-    }
 
     /**
      * Löscht ein Objekt per ID

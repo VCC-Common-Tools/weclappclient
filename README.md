@@ -33,6 +33,26 @@ $client = new WeclappClient('your-subdomain', 'your-api-key');
 $client = new WeclappClient('your-subdomain', 'your-api-key', null, 1);
 ```
 
+### HTTP options: timeouts & retries (v2.2.0)
+
+The client applies sane defaults for production use and automatically retries
+rate-limited requests (HTTP `429`) and connection errors with exponential backoff.
+You can override these via the optional 5th constructor argument:
+
+```php
+$client = new WeclappClient('your-subdomain', 'your-api-key', null, 2, [
+    'timeout'         => 30,   // request timeout in seconds (default 30)
+    'connect_timeout' => 10,   // connection timeout in seconds (default 10)
+    'max_retries'     => 3,    // retries on HTTP 429 / connection errors (default 3)
+    'retry_delay_ms'  => 1000, // base backoff in ms, doubled per attempt (default 1000)
+]);
+```
+
+> **Note:** `timeout`/`connect_timeout` apply only to the internally created HTTP
+> client. If you inject your own Guzzle client, configure timeouts there.
+> Generic `5xx` responses are **not** retried automatically to avoid duplicate
+> writes on non-idempotent operations (e.g. POST).
+
 ## 🔍 Querying with the QueryBuilder
 
 ```php
@@ -347,12 +367,22 @@ $client->query('/party')->dryRun()->create($data);
 
 ## 🧪 Testing
 
-```bash
-# Run all tests
-vendor/bin/phpunit
+The test suite is split into two parts:
 
-# Run specific test
-vendor/bin/phpunit tests/unit/CustomerTest.php
+- **`unit`** – fast, isolated tests using a mocked HTTP client. No credentials or
+  network access required. These run in CI.
+- **`integration`** – tests against a real Weclapp system. Requires valid credentials
+  in `tests/.env` (`WCLP_TEST_SUBDOMAIN`, `WCLP_TEST_API_KEY`; see `tests/.env.example`).
+
+```bash
+# Unit tests only (default, no credentials needed)
+composer test
+
+# Integration tests against a live system (needs tests/.env)
+composer test-integration
+
+# Everything
+composer test-all
 ```
 
 ---

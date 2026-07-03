@@ -5,6 +5,51 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-07-03
+
+### Added
+
+#### 🛡️ Robustheit für den Produktivbetrieb
+- **HTTP-Timeouts**: Der intern erzeugte Guzzle-Client verwendet nun Standard-Timeouts
+  (`timeout` 30s, `connect_timeout` 10s), damit hängende Requests die Anwendung nicht
+  mehr unbegrenzt blockieren.
+- **Automatische Wiederholung bei Rate-Limits**: Anfragen mit HTTP `429 Too Many Requests`
+  sowie reine Verbindungsfehler werden automatisch mit exponentiellem Backoff wiederholt
+  (Standard: 3 Versuche). Der `Retry-After`-Header wird berücksichtigt.
+  - Bewusst werden **keine** generischen 5xx-Fehler wiederholt, um bei nicht-idempotenten
+    Operationen (POST) doppelte Datensätze zu vermeiden.
+- **Konfigurierbar** über den neuen optionalen 5. Konstruktor-Parameter `array $options`:
+  `timeout`, `connect_timeout`, `max_retries`, `retry_delay_ms`.
+- **Neuer Fehlercode** `WeclappErrorCode::TooManyRequests` (2004) für HTTP 429.
+
+#### 🧪 Test-Infrastruktur
+- **`phpunit.xml`** mit getrennten Testsuites `unit` (gemockter HTTP-Client, keine
+  Credentials nötig) und `integration` (echtes Testsystem).
+- **Composer-Skripte**: `composer test` (Unit), `composer test-integration`, `composer test-all`.
+- **`autoload-dev`** für Testklassen (PSR-4).
+- **Neue Unit-Tests** mit gemocktem Guzzle-Client für Client- und QueryBuilder-Logik
+  (inkl. Retry-Verhalten) – laufen ohne Netzwerkzugriff.
+
+### Fixed
+- **`count()` berücksichtigt jetzt alle Filter** (auch `orWhere*`, `orWhereGroup`,
+  `whereRaw`). Bisher wurden ausschließlich AND-Filter gezählt, was bei OR-Bedingungen
+  falsche Ergebnisse lieferte.
+- **`limit()` reduziert die Seitengröße**: `->limit(5)->all()` fordert nun höchstens 5
+  Datensätze pro Seite an, statt unnötig 100 zu laden.
+- **Fehler-Responses sind nach einer Exception abrufbar**: `getLastResponse()` und
+  `getLastErrorMessage()` spiegeln jetzt den tatsächlichen Fehler wider (zuvor nur die
+  letzte erfolgreiche Antwort).
+- Doppelte `count()`-Methode im `QueryBuilder` entfernt (wird aus der Basisklasse geerbt).
+- Falscher Docblock-Namespace (`Query\QueryBuilder` → `QueryBuilder`) korrigiert.
+
+### Changed
+- Integrationstest von `/customer` auf `/party` umgestellt: In der Weclapp-API v2 existiert
+  der Endpunkt `/customer` nicht mehr – Kunden sind `party`-Objekte mit `customer = true`.
+
+### Technical Details
+- Vollständig rückwärtskompatibel – keine Breaking Changes an bestehenden Signaturen.
+- Der neue Konstruktor-Parameter `$options` ist optional; bestehender Code läuft unverändert.
+
 ## [2.1.2] - 2025-01-15
 
 ### Fixed

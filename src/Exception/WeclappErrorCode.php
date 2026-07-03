@@ -19,6 +19,7 @@ enum WeclappErrorCode: int
     case Unauthorized          = 2001;
     case NotFound              = 2002;
     case Timeout               = 2003;
+    case TooManyRequests       = 2004;
 
     // Datenvalidierung
     case ValidationFailed      = 3000;

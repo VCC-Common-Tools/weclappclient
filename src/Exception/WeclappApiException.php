@@ -2,7 +2,6 @@
 
 namespace WeclappClient\Exception;
 
-use RuntimeException;
 use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Message\ResponseInterface;
 
@@ -59,6 +58,7 @@ class WeclappApiException extends WeclappException
             401 => WeclappErrorCode::Unauthorized,
             404 => WeclappErrorCode::NotFound,
             408 => WeclappErrorCode::Timeout,
+            429 => WeclappErrorCode::TooManyRequests,
             default => WeclappErrorCode::ApiRequestFailed
         };
 

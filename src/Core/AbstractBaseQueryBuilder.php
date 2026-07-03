@@ -419,7 +419,13 @@ abstract class AbstractBaseQueryBuilder
     public function count(): int
     {
         $uri = rtrim($this->endpoint, '/') . '/count';
-        $response = $this->client->request($uri, 'GET', $this->filters);
+
+        // Alle Filter berücksichtigen (inkl. OR-Filter, OR-Gruppen, whereRaw),
+        // aber Pagination/Sortierung sind für /count irrelevant.
+        $params = $this->buildQueryParams();
+        unset($params['page'], $params['pageSize'], $params['sort']);
+
+        $response = $this->client->request($uri, 'GET', $params);
         return (int) ($response['body']['result'] ?? 0);
     }
 }

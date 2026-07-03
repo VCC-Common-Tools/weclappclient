@@ -4,7 +4,9 @@ namespace WeclappClient\Core;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
+use Psr\Http\Message\ResponseInterface;
 use WeclappClient\Exception\WeclappApiException;
 use WeclappClient\Exception\WeclappErrorCode;
 
@@ -46,16 +48,35 @@ class WeclappClient
     private array $lastResponse = [];
 
     /**
+     * Maximale Anzahl automatischer Wiederholungen bei Rate-Limits (429)
+     * und Verbindungsfehlern.
+     */
+    private int $maxRetries;
+
+    /**
+     * Basis-Wartezeit (Millisekunden) für den exponentiellen Backoff zwischen
+     * Wiederholungsversuchen.
+     */
+    private int $retryDelayMs;
+
+    /**
      * Konstruktor
      *
      * @param string $subdomain Die Weclapp-Subdomain
      * @param string $accessToken Der API-Token
      * @param ClientInterface|null $client Optionaler eigener Guzzle-Client
      * @param int $apiVersion API-Version (1 oder 2, Standard: 2)
-     * 
+     * @param array $options Optionale HTTP-Einstellungen:
+     *                       - timeout (float, Sekunden, Standard 30) – Gesamt-Timeout einer Anfrage
+     *                       - connect_timeout (float, Sekunden, Standard 10) – Verbindungs-Timeout
+     *                       - max_retries (int, Standard 3) – Wiederholungen bei 429/Verbindungsfehler
+     *                       - retry_delay_ms (int, Standard 1000) – Basis-Wartezeit für Backoff
+     *                       Hinweis: timeout/connect_timeout gelten nur für den intern
+     *                       erzeugten Client, nicht für einen injizierten $client.
+     *
      * @throws \InvalidArgumentException wenn eine ungültige API-Version angegeben wird
      */
-    public function __construct(string $subdomain, string $accessToken, ?ClientInterface $client = null, int $apiVersion = 2)
+    public function __construct(string $subdomain, string $accessToken, ?ClientInterface $client = null, int $apiVersion = 2, array $options = [])
     {
         // Validiere API-Version
         if (!in_array($apiVersion, [1, 2], true))
@@ -66,7 +87,85 @@ class WeclappClient
         $this->apiVersion = $apiVersion;
         $this->apiBaseUrl = "https://{$subdomain}.weclapp.com/webapp/api/v{$apiVersion}/";
         $this->accessToken = $accessToken;
-        $this->client = $client ?? new Client();
+
+        $this->maxRetries = max(0, (int) ($options['max_retries'] ?? 3));
+        $this->retryDelayMs = max(0, (int) ($options['retry_delay_ms'] ?? 1000));
+
+        $this->client = $client ?? new Client([
+            'timeout' => $options['timeout'] ?? 30,
+            'connect_timeout' => $options['connect_timeout'] ?? 10,
+        ]);
+    }
+
+    /**
+     * Führt eine HTTP-Anfrage über den Guzzle-Client aus und wiederholt sie bei
+     * Rate-Limits (HTTP 429) und Verbindungsfehlern mit exponentiellem Backoff.
+     *
+     * Bewusst werden NUR 429 und reine Verbindungsfehler wiederholt – generische
+     * 5xx-Fehler werden nicht automatisch erneut gesendet, um bei nicht-idempotenten
+     * Operationen (z. B. POST) keine doppelten Datensätze zu erzeugen.
+     *
+     * @throws ConnectException wenn nach allen Versuchen die Verbindung scheitert
+     * @throws RequestException bei nicht wiederholbaren bzw. endgültigen Fehlern
+     */
+    private function sendWithRetry(string $method, string $url, array $options): ResponseInterface
+    {
+        $attempt = 0;
+
+        while (true)
+        {
+            try
+            {
+                return $this->client->request($method, $url, $options);
+            }
+            catch (ConnectException $e)
+            {
+                if ($attempt >= $this->maxRetries)
+                {
+                    throw $e;
+                }
+
+                $this->waitBeforeRetry(null, $attempt);
+                $attempt++;
+            }
+            catch (RequestException $e)
+            {
+                $status = $e->getResponse()?->getStatusCode() ?? 0;
+
+                // Nur echte Rate-Limits (429) werden wiederholt.
+                if ($status !== 429 || $attempt >= $this->maxRetries)
+                {
+                    throw $e;
+                }
+
+                $this->waitBeforeRetry($e->getResponse(), $attempt);
+                $attempt++;
+            }
+        }
+    }
+
+    /**
+     * Wartet vor einem erneuten Versuch. Berücksichtigt den Retry-After-Header
+     * (Sekunden) falls vorhanden, andernfalls exponentiellen Backoff.
+     */
+    private function waitBeforeRetry(?ResponseInterface $response, int $attempt): void
+    {
+        $delayMs = $this->retryDelayMs * (2 ** $attempt);
+
+        if ($response !== null && $response->hasHeader('Retry-After'))
+        {
+            $retryAfter = (int) $response->getHeaderLine('Retry-After');
+            if ($retryAfter > 0)
+            {
+                // Auf sinnvolle Obergrenze begrenzen (60s)
+                $delayMs = min($retryAfter, 60) * 1000;
+            }
+        }
+
+        if ($delayMs > 0)
+        {
+            usleep($delayMs * 1000);
+        }
     }
 
     /**
@@ -103,9 +202,9 @@ class WeclappClient
             $options['json'] = $bodyParams;
         }
 
-        try 
+        try
         {
-            $response = $this->client->request($method, $url, $options);
+            $response = $this->sendWithRetry($method, $url, $options);
 
             $body = json_decode($response->getBody()->getContents(), true) ?? [];
 
@@ -115,19 +214,56 @@ class WeclappClient
             ];
 
             return $this->lastResponse = ['body' => $body, 'meta' => $meta];
-        } 
-        catch (RequestException $e) 
+        }
+        catch (RequestException $e)
         {
             // Schlägt fehlende Verbindung, 4xx/5xx, ungültige Token etc. ab
+            $this->captureErrorResponse($e->getResponse());
             throw WeclappApiException::fromRequestException($e);
         }
+    }
+
+    /**
+     * Speichert eine Fehler-Response in $lastResponse, damit getLastResponse()
+     * und getLastErrorMessage() auch nach einer geworfenen Exception den
+     * tatsächlichen Fehler widerspiegeln (statt der letzten Erfolgs-Antwort).
+     */
+    private function captureErrorResponse(?ResponseInterface $response): void
+    {
+        if ($response === null)
+        {
+            return;
+        }
+
+        $stream = $response->getBody();
+        if ($stream->isSeekable())
+        {
+            $stream->rewind();
+        }
+
+        $body = json_decode((string) $stream, true) ?: [];
+
+        // Stream zurückspulen, damit nachgelagerte Leser (z. B. die Exception-Fabrik)
+        // den Inhalt weiterhin lesen können.
+        if ($stream->isSeekable())
+        {
+            $stream->rewind();
+        }
+
+        $this->lastResponse = [
+            'body' => $body,
+            'meta' => [
+                'status_code' => $response->getStatusCode(),
+                'headers' => $response->getHeaders()
+            ]
+        ];
     }
 
     /**
      * Einstiegspunkt für Abfragen via QueryBuilder
      *
      * @param string $endpoint z. B. /article, /salesOrder
-     * @return Query\QueryBuilder
+     * @return QueryBuilder
      */
     public function query(string $endpoint): QueryBuilder
     {
@@ -229,10 +365,10 @@ class WeclappClient
             }
         }
 
-        try 
+        try
         {
-            $response = $this->client->request($method, $url, $options);
-            
+            $response = $this->sendWithRetry($method, $url, $options);
+
             if ($method === 'GET')
             {
                 // Download: Binärdaten zurückgeben
@@ -252,9 +388,10 @@ class WeclappClient
                 return $this->lastResponse = ['body' => $body, 'meta' => $meta];
             }
         } 
-        catch (RequestException $e) 
+        catch (RequestException $e)
         {
             // Zentrale Fehlerauswertung via Exception-Fabrik
+            $this->captureErrorResponse($e->getResponse());
             throw WeclappApiException::fromRequestException($e);
         }
     }
